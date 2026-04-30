@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import SidebarContent from './SidebarContent'
 import Header from './Header'
+import BottomNav from './BottomNav'
 
 export default function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -31,10 +32,13 @@ export default function Layout({ children }) {
 
       <div className="flex flex-col flex-1 min-w-0">
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 lg:pb-6">
           {children}
         </main>
       </div>
+
+      {/* Barre de navigation mobile */}
+      <BottomNav />
     </div>
   )
 }
