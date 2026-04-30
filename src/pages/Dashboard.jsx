@@ -7,15 +7,6 @@ import {
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
-const mockStockData = [
-  { name: 'Résistances', stock: 450 },
-  { name: 'Condensateurs', stock: 230 },
-  { name: 'Transistors', stock: 89 },
-  { name: 'CI', stock: 45 },
-  { name: 'LED', stock: 320 },
-  { name: 'Capteurs', stock: 28 },
-]
-
 const movementTypeConfig = {
   entry:   { label: 'Entrée',    color: 'text-emerald-600 bg-emerald-50 border border-emerald-200' },
   exit:    { label: 'Sortie',    color: 'text-red-600 bg-red-50 border border-red-200' },
@@ -26,25 +17,35 @@ const movementTypeConfig = {
 
 // ─── Dashboard Laborantin (accès complet) ───────────────────────────────────
 function DashboardLaborantin() {
-  const [stats, setStats] = useState({ total: 0, lowStock: 0, projects: 0, movements: 0 })
+  const [stats, setStats] = useState({ total: 0, lowStock: 0, projects: 0, movements: 0, totalStock: 0 })
+  const [stockData, setStockData] = useState([])
   const [recentMovements, setRecentMovements] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
       const [{ data: components }, { data: projects }, { data: movements }] = await Promise.all([
-        supabase.from('components').select('quantity, safety_stock'),
+        supabase.from('components').select('name, quantity, safety_stock'),
         supabase.from('projects').select('id'),
         supabase.from('stock_movements')
           .select('id, type, quantity, date, component_id(name)')
           .order('date', { ascending: false }).limit(5),
       ])
+      const comps = components || []
+      const totalStock = comps.reduce((sum, c) => sum + (c.quantity || 0), 0)
       setStats({
-        total: components?.length ?? 0,
-        lowStock: components?.filter(c => c.quantity <= c.safety_stock).length ?? 0,
+        total: comps.length,
+        lowStock: comps.filter(c => c.quantity <= c.safety_stock).length,
         projects: projects?.length ?? 0,
         movements: movements?.length ?? 0,
+        totalStock,
       })
+      // Top 10 components by quantity for chart
+      const chartData = [...comps]
+        .sort((a, b) => b.quantity - a.quantity)
+        .slice(0, 10)
+        .map(c => ({ name: c.name.length > 15 ? c.name.slice(0, 15) + '…' : c.name, stock: c.quantity, safety: c.safety_stock }))
+      setStockData(chartData)
       setRecentMovements(movements ?? [])
       setLoading(false)
     }
@@ -52,10 +53,10 @@ function DashboardLaborantin() {
   }, [])
 
   const statCards = [
-    { label: 'Types de composants', value: stats.total,     icon: Package,      iconClass: 'text-blue-600',    bgClass: 'bg-blue-50',    borderClass: 'border-blue-100',    valueClass: 'text-blue-700' },
-    { label: 'Alertes stock bas',   value: stats.lowStock,  icon: AlertTriangle, iconClass: 'text-amber-600',  bgClass: 'bg-amber-50',   borderClass: 'border-amber-100',   valueClass: 'text-amber-700' },
-    { label: 'Projets enregistrés', value: stats.projects,  icon: FolderKanban,  iconClass: 'text-violet-600', bgClass: 'bg-violet-50',  borderClass: 'border-violet-100',  valueClass: 'text-violet-700' },
-    { label: 'Mouvements récents',  value: stats.movements, icon: ArrowUpDown,   iconClass: 'text-emerald-600', bgClass: 'bg-emerald-50', borderClass: 'border-emerald-100', valueClass: 'text-emerald-700' },
+    { label: 'Types de composants', value: stats.total,      icon: Package,      iconClass: 'text-blue-600',    bgClass: 'bg-blue-50',    borderClass: 'border-blue-100',    valueClass: 'text-blue-700' },
+    { label: 'Stock total (unités)',value: stats.totalStock, icon: TrendingUp,   iconClass: 'text-cyan-600',    bgClass: 'bg-cyan-50',    borderClass: 'border-cyan-100',    valueClass: 'text-cyan-700' },
+    { label: 'Alertes stock bas',   value: stats.lowStock,   icon: AlertTriangle, iconClass: 'text-amber-600',  bgClass: 'bg-amber-50',   borderClass: 'border-amber-100',   valueClass: 'text-amber-700' },
+    { label: 'Projets enregistrés', value: stats.projects,   icon: FolderKanban,  iconClass: 'text-violet-600', bgClass: 'bg-violet-50',  borderClass: 'border-violet-100',  valueClass: 'text-violet-700' },
   ]
 
   return (
@@ -81,25 +82,35 @@ function DashboardLaborantin() {
         <div className="lg:col-span-3 bg-white rounded-xl p-4 lg:p-5 border border-gray-200 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-gray-800">Niveaux de stock</h3>
-            <p className="text-xs text-gray-400">Par catégorie · données exemple</p>
+            <p className="text-xs text-gray-400">Top composants par quantité</p>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={mockStockData} barSize={22}>
-              <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: 12 }}
-                labelStyle={{ color: '#374151' }}
-                itemStyle={{ color: '#7c3aed' }}
-                cursor={{ fill: 'rgba(124,58,237,0.05)' }}
-              />
-              <Bar dataKey="stock" radius={[4, 4, 0, 0]}>
-                {mockStockData.map((entry, i) => (
-                  <Cell key={i} fill={entry.stock < 50 ? '#f59e0b' : '#7c3aed'} fillOpacity={0.8} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {stockData.length === 0 && !loading ? (
+            <div className="flex flex-col items-center justify-center h-[180px] text-center">
+              <Package className="w-8 h-8 text-gray-300 mb-2" />
+              <p className="text-xs text-gray-400">Aucun composant enregistré</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={stockData} barSize={22}>
+                <XAxis dataKey="name" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: 12 }}
+                  labelStyle={{ color: '#374151' }}
+                  formatter={(value, name, props) => {
+                    const item = props.payload
+                    return [<span key="v">{value} unités {item.stock <= item.safety ? '⚠️ stock bas' : ''}</span>, 'Stock']
+                  }}
+                  cursor={{ fill: 'rgba(124,58,237,0.05)' }}
+                />
+                <Bar dataKey="stock" radius={[4, 4, 0, 0]}>
+                  {stockData.map((entry, i) => (
+                    <Cell key={i} fill={entry.stock <= entry.safety ? '#f59e0b' : '#7c3aed'} fillOpacity={0.85} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         <div className="lg:col-span-2 bg-white rounded-xl p-4 lg:p-5 border border-gray-200 shadow-sm">
