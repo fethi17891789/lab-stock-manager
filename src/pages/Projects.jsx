@@ -711,9 +711,6 @@ function LabProjects() {
           </Table>
         </div>
       </div>
-    </div>
-  )
-}
 
       {/* Modal gestion retour */}
       <Dialog open={!!manageReq} onOpenChange={() => setManageReq(null)}>
@@ -725,12 +722,7 @@ function LabProjects() {
             <p className="text-xs text-gray-500">Pour chaque composant, indiquez son état au retour.</p>
             {manageReq?.items.map((item, idx) => {
               const compStatus = item.component?.status || 'in_stock'
-              const statusColors = {
-                in_stock: 'bg-emerald-50 text-emerald-700',
-                in_project: 'bg-blue-50 text-blue-700',
-                damaged: 'bg-amber-50 text-amber-700',
-                lost: 'bg-red-50 text-red-700',
-              }
+              const statusColors = { in_stock: 'bg-emerald-50 text-emerald-700', in_project: 'bg-blue-50 text-blue-700', damaged: 'bg-amber-50 text-amber-700', lost: 'bg-red-50 text-red-700' }
               const statusLabels = { in_stock: 'En stock', in_project: 'En projet', damaged: 'Endommagé', lost: 'Perdu' }
               return (
                 <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
@@ -739,21 +731,16 @@ function LabProjects() {
                       <p className="font-medium text-gray-800 text-sm">{item.component?.name}</p>
                       <p className="text-xs text-gray-400 font-mono">{item.component?.code} · {item.quantity} unité(s)</p>
                     </div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[compStatus]}`}>
-                      {statusLabels[compStatus]}
-                    </span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[compStatus]}`}>{statusLabels[compStatus]}</span>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <Button size="sm" onClick={() => updateComponentStatus(item.component_id, 'in_stock', item.quantity)}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7 px-2 gap-1">
+                    <Button size="sm" onClick={() => updateComponentStatus(item.component_id, 'in_stock', item.quantity)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7 px-2 gap-1">
                       <Check className="w-3 h-3" /> Rendu
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => updateComponentStatus(item.component_id, 'damaged', 0)}
-                      className="text-amber-600 border-amber-200 hover:bg-amber-50 text-xs h-7 px-2">
+                    <Button size="sm" variant="outline" onClick={() => updateComponentStatus(item.component_id, 'damaged', 0)} className="text-amber-600 border-amber-200 hover:bg-amber-50 text-xs h-7 px-2">
                       Endommagé
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => updateComponentStatus(item.component_id, 'lost', 0)}
-                      className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7 px-2">
+                    <Button size="sm" variant="outline" onClick={() => updateComponentStatus(item.component_id, 'lost', 0)} className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7 px-2">
                       Perdu
                     </Button>
                   </div>
