@@ -137,12 +137,12 @@ export default function Components() {
   return (
     <div className="space-y-5">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
             placeholder="Rechercher par nom ou code..."
-            className="pl-9 w-72 bg-white"
+            className="pl-9 w-full sm:w-72 bg-white"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -154,7 +154,7 @@ export default function Components() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">

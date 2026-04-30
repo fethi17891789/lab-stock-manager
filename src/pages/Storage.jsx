@@ -85,7 +85,7 @@ export default function Storage() {
   }
 
   const Section = ({ icon: Icon, title, subtitle, color, onAdd, addLabel, children }) => (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center`}>
