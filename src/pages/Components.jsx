@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Plus, Search, Pencil, Trash2, Package, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Package, AlertTriangle, QrCode, Download, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
+import { QRCodeSVG } from 'qrcode.react'
 
 const emptyForm = { name: '', code: '', quantity: '', safety_stock: '', slot_id: '' }
 
@@ -27,11 +28,13 @@ export default function Components() {
   const [loading, setLoading] = useState(true)
   const [open, setOpen] = useState(false)
   const [deleteId, setDeleteId] = useState(null)
+  const [qrComp, setQrComp] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [selectedLab, setSelectedLab] = useState('')
   const [selectedCabinet, setSelectedCabinet] = useState('')
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState(null)
+  const qrRef = useRef(null)
 
   useEffect(() => { fetchAll() }, [])
 
@@ -107,11 +110,14 @@ export default function Components() {
     }
     if (editing) {
       await supabase.from('components').update(payload).eq('id', editing)
+      setSaving(false)
+      setOpen(false)
     } else {
-      await supabase.from('components').insert(payload)
+      const { data } = await supabase.from('components').insert(payload).select('*, slot_id(id, number, cabinet_id(id, name, laboratory_id(id, name)))').single()
+      setSaving(false)
+      setOpen(false)
+      if (data) setQrComp(data)
     }
-    setSaving(false)
-    setOpen(false)
     fetchAll()
   }
 
@@ -119,6 +125,63 @@ export default function Components() {
     await supabase.from('components').delete().eq('id', id)
     setDeleteId(null)
     fetchAll()
+  }
+
+  function getQrData(comp) {
+    const slot = comp.slot_id
+    const cab = slot?.cabinet_id
+    const lab = cab?.laboratory_id
+    return JSON.stringify({
+      code: comp.code,
+      nom: comp.name,
+      labo: lab?.name || '',
+      armoire: cab?.name || '',
+      tiroir: slot?.number || '',
+    })
+  }
+
+  function handlePrintQr() {
+    const svgEl = qrRef.current?.querySelector('svg')
+    if (!svgEl) return
+    const svgData = new XMLSerializer().serializeToString(svgEl)
+    const win = window.open('', '_blank')
+    win.document.write(`
+      <html><head><title>QR Code - ${qrComp?.code}</title>
+      <style>
+        body { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; font-family:sans-serif; }
+        svg { width:200px; height:200px; }
+        h2 { margin:16px 0 4px; font-size:18px; }
+        p  { margin:0; color:#666; font-size:13px; }
+      </style></head>
+      <body>
+        ${svgData}
+        <h2>${qrComp?.code}</h2>
+        <p>${qrComp?.name}</p>
+      </body></html>
+    `)
+    win.document.close()
+    win.print()
+  }
+
+  function handleDownloadQr() {
+    const svgEl = qrRef.current?.querySelector('svg')
+    if (!svgEl) return
+    const canvas = document.createElement('canvas')
+    canvas.width = 300
+    canvas.height = 300
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+    const svgData = 'data:image/svg+xml;base64,' + btoa(new XMLSerializer().serializeToString(svgEl))
+    img.onload = () => {
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, 300, 300)
+      ctx.drawImage(img, 0, 0, 300, 300)
+      const a = document.createElement('a')
+      a.download = `qr-${qrComp?.code}.png`
+      a.href = canvas.toDataURL('image/png')
+      a.click()
+    }
+    img.src = svgData
   }
 
   const filtered = components.filter(c =>
@@ -154,7 +217,7 @@ export default function Components() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
@@ -211,6 +274,9 @@ export default function Components() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <button onClick={() => setQrComp(comp)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-violet-600 transition-colors" title="QR Code">
+                          <QrCode className="w-3.5 h-3.5" />
+                        </button>
                         <button onClick={() => openEdit(comp)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-violet-600 transition-colors">
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
@@ -237,41 +303,23 @@ export default function Components() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Nom *</Label>
-                <Input
-                  placeholder="ex: Résistance 10kΩ"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                />
+                <Input placeholder="ex: Résistance 10kΩ" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Code / Référence *</Label>
-                <Input
-                  placeholder="ex: RES-10K"
-                  value={form.code}
-                  onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-                />
+                <Input placeholder="ex: RES-10K" value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Quantité actuelle</Label>
-                <Input
-                  type="number" min="0" placeholder="0"
-                  value={form.quantity}
-                  onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
-                />
+                <Input type="number" min="0" placeholder="0" value={form.quantity} onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Seuil d'alerte</Label>
-                <Input
-                  type="number" min="0" placeholder="0"
-                  value={form.safety_stock}
-                  onChange={e => setForm(f => ({ ...f, safety_stock: e.target.value }))}
-                />
+                <Input type="number" min="0" placeholder="0" value={form.safety_stock} onChange={e => setForm(f => ({ ...f, safety_stock: e.target.value }))} />
               </div>
             </div>
-
-            {/* Emplacement en cascade */}
             <div className="border-t pt-3 space-y-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Emplacement</p>
               {labs.length === 0 ? (
@@ -292,28 +340,22 @@ export default function Components() {
                   <div className="space-y-1.5">
                     <Label>Armoire</Label>
                     <Select value={selectedCabinet} onValueChange={handleCabinetChange} disabled={!selectedLab}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={selectedLab ? 'Choisir une armoire' : 'Choisissez un labo d\'abord'} />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={selectedLab ? 'Choisir une armoire' : "Choisissez un labo d'abord"} /></SelectTrigger>
                       <SelectContent>
                         {filteredCabinets.length === 0
                           ? <SelectItem value="none" disabled>Aucune armoire dans ce labo</SelectItem>
-                          : filteredCabinets.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                        }
+                          : filteredCabinets.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Tiroir / Emplacement</Label>
                     <Select value={form.slot_id} onValueChange={v => setForm(f => ({ ...f, slot_id: v }))} disabled={!selectedCabinet}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={selectedCabinet ? 'Choisir un tiroir' : 'Choisissez une armoire d\'abord'} />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder={selectedCabinet ? 'Choisir un tiroir' : "Choisissez une armoire d'abord"} /></SelectTrigger>
                       <SelectContent>
                         {filteredSlots.length === 0
                           ? <SelectItem value="none" disabled>Aucun tiroir dans cette armoire</SelectItem>
-                          : filteredSlots.map(s => <SelectItem key={s.id} value={s.id}>Tiroir {s.number}</SelectItem>)
-                        }
+                          : filteredSlots.map(s => <SelectItem key={s.id} value={s.id}>Tiroir {s.number}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -323,14 +365,49 @@ export default function Components() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving || !form.name || !form.code}
-              className="bg-violet-600 hover:bg-violet-700 text-white"
-            >
+            <Button onClick={handleSave} disabled={saving || !form.name || !form.code} className="bg-violet-600 hover:bg-violet-700 text-white">
               {saving ? 'Enregistrement...' : editing ? 'Modifier' : 'Ajouter'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: QR Code */}
+      <Dialog open={!!qrComp} onOpenChange={() => setQrComp(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="w-4 h-4 text-violet-600" />
+              QR Code — {qrComp?.code}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            <div ref={qrRef} className="p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+              {qrComp && (
+                <QRCodeSVG
+                  value={getQrData(qrComp)}
+                  size={180}
+                  level="M"
+                  includeMargin={false}
+                />
+              )}
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-gray-800">{qrComp?.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5 font-mono">{qrComp?.code}</p>
+              {qrComp?.slot_id && (
+                <p className="text-xs text-gray-400 mt-1">{getLocation(qrComp)}</p>
+              )}
+            </div>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1 gap-2" onClick={handleDownloadQr}>
+                <Download className="w-4 h-4" /> Télécharger
+              </Button>
+              <Button className="flex-1 gap-2 bg-violet-600 hover:bg-violet-700 text-white" onClick={handlePrintQr}>
+                <Printer className="w-4 h-4" /> Imprimer
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
