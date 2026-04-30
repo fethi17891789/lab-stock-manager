@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 const allNavItems = [
   { path: '/dashboard',  icon: LayoutDashboard, label: 'Dashboard',         roles: ['laborantin', 'teacher', 'student'] },
   { path: '/components', icon: Cpu,              label: 'Composants',        roles: ['laborantin'] },
-  { path: '/projects',   icon: FolderKanban,     label: 'Projets',           roles: ['laborantin', 'teacher'] },
+  { path: '/projects',   icon: FolderKanban,     label: 'Projets',           roles: ['laborantin', 'teacher', 'student'] },
   { path: '/students',   icon: Users,            label: 'Étudiants',         roles: ['laborantin', 'teacher'] },
   { path: '/stock',      icon: ArrowLeftRight,   label: 'Mouvements',        roles: ['laborantin'] },
   { path: '/storage',    icon: Archive,          label: 'Stockage',          roles: ['laborantin'] },

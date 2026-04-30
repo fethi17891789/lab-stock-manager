@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import jsPDF from 'jspdf'
-import 'jspdf-autotable'
+import autoTable from 'jspdf-autotable'
 
 const statusConfig = {
   pending_teacher: { label: 'En attente Enseignant', color: 'bg-amber-50 text-amber-600 border-amber-200' },
@@ -320,15 +320,13 @@ function LabProjects() {
     doc.text(`Liste de préparation - ${req.title}`, 14, 20)
     doc.setFontSize(10)
     doc.text(`Étudiant: ${req.student?.firstname} ${req.student?.name}`, 14, 28)
-    
-    const tableData = req.items.map(item => [item.component?.name || '?', item.component?.code || '?', item.quantity])
-    
-    doc.autoTable({
+
+    autoTable(doc, {
       startY: 35,
       head: [['Composant', 'Référence', 'Quantité à préparer']],
-      body: tableData,
+      body: req.items.map(item => [item.component?.name || '?', item.component?.code || '?', item.quantity]),
     })
-    
+
     doc.save(`preparation-${req.title}.pdf`)
   }
 
@@ -336,7 +334,7 @@ function LabProjects() {
     const doc = new jsPDF()
     doc.setFontSize(18)
     doc.text(`Fiche Récapitulative de Projet`, 14, 20)
-    
+
     doc.setFontSize(12)
     doc.text(`Titre du projet : ${req.title}`, 14, 35)
     doc.text(`Étudiant : ${req.student?.firstname} ${req.student?.name}`, 14, 45)
@@ -344,12 +342,12 @@ function LabProjects() {
     doc.text(`Date de demande : ${new Date(req.created_at).toLocaleDateString('fr-FR')}`, 14, 65)
     doc.text(`Statut : ${statusConfig[req.status]?.label}`, 14, 75)
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 85,
       head: [['Composant Alloué', 'Référence', 'Quantité']],
       body: req.items.map(item => [item.component?.name, item.component?.code, item.quantity]),
     })
-    
+
     doc.save(`fiche-projet-${req.title}.pdf`)
   }
 
