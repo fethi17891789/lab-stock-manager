@@ -10,6 +10,7 @@ import Students from '@/pages/Students'
 import StockMovements from '@/pages/StockMovements'
 import Storage from '@/pages/Storage'
 import Reports from '@/pages/Reports'
+import ComponentPublic from '@/pages/ComponentPublic'
 
 function ProtectedLayout() {
   const { user, loading } = useAuth()
@@ -45,6 +46,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+          <Route path="/component/:id" element={<ComponentPublic />} />
           <Route path="/*" element={<ProtectedLayout />} />
         </Routes>
       </AuthProvider>

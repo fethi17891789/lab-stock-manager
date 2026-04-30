@@ -128,16 +128,7 @@ export default function Components() {
   }
 
   function getQrData(comp) {
-    const slot = comp.slot_id
-    const cab = slot?.cabinet_id
-    const lab = cab?.laboratory_id
-    return JSON.stringify({
-      code: comp.code,
-      nom: comp.name,
-      labo: lab?.name || '',
-      armoire: cab?.name || '',
-      tiroir: slot?.number || '',
-    })
+    return `${window.location.origin}/component/${comp.id}`
   }
 
   function handlePrintQr() {
