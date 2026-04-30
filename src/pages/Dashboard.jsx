@@ -19,11 +19,11 @@ const mockStockData = [
 ]
 
 const movementTypeConfig = {
-  entry:   { label: 'Entrée',      color: 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' },
-  exit:    { label: 'Sortie',      color: 'text-red-400 bg-red-500/10 border border-red-500/20' },
-  return:  { label: 'Retour',      color: 'text-blue-400 bg-blue-500/10 border border-blue-500/20' },
-  damaged: { label: 'Endommagé',   color: 'text-amber-400 bg-amber-500/10 border border-amber-500/20' },
-  lost:    { label: 'Perdu',       color: 'text-slate-400 bg-slate-500/10 border border-slate-500/20' },
+  entry:   { label: 'Entrée',    color: 'text-emerald-600 bg-emerald-50 border border-emerald-200' },
+  exit:    { label: 'Sortie',    color: 'text-red-600 bg-red-50 border border-red-200' },
+  return:  { label: 'Retour',   color: 'text-blue-600 bg-blue-50 border border-blue-200' },
+  damaged: { label: 'Endommagé', color: 'text-amber-600 bg-amber-50 border border-amber-200' },
+  lost:    { label: 'Perdu',     color: 'text-gray-600 bg-gray-100 border border-gray-200' },
 }
 
 export default function Dashboard() {
@@ -58,33 +58,37 @@ export default function Dashboard() {
       label: 'Types de composants',
       value: stats.total,
       icon: Package,
-      iconClass: 'text-blue-400',
-      bgClass: 'bg-blue-500/10',
-      borderClass: 'border-blue-500/20',
+      iconClass: 'text-blue-600',
+      bgClass: 'bg-blue-50',
+      borderClass: 'border-blue-100',
+      valueClass: 'text-blue-700',
     },
     {
       label: 'Alertes stock bas',
       value: stats.lowStock,
       icon: AlertTriangle,
-      iconClass: 'text-amber-400',
-      bgClass: 'bg-amber-500/10',
-      borderClass: 'border-amber-500/20',
+      iconClass: 'text-amber-600',
+      bgClass: 'bg-amber-50',
+      borderClass: 'border-amber-100',
+      valueClass: 'text-amber-700',
     },
     {
       label: 'Projets enregistrés',
       value: stats.projects,
       icon: FolderKanban,
-      iconClass: 'text-violet-400',
-      bgClass: 'bg-violet-500/10',
-      borderClass: 'border-violet-500/20',
+      iconClass: 'text-violet-600',
+      bgClass: 'bg-violet-50',
+      borderClass: 'border-violet-100',
+      valueClass: 'text-violet-700',
     },
     {
       label: 'Mouvements récents',
       value: stats.movements,
       icon: ArrowUpDown,
-      iconClass: 'text-emerald-400',
-      bgClass: 'bg-emerald-500/10',
-      borderClass: 'border-emerald-500/20',
+      iconClass: 'text-emerald-600',
+      bgClass: 'bg-emerald-50',
+      borderClass: 'border-emerald-100',
+      valueClass: 'text-emerald-700',
     },
   ]
 
@@ -93,36 +97,36 @@ export default function Dashboard() {
       {/* Welcome bar */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-100">Bonjour 👋</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h2 className="text-xl font-bold text-gray-900">Bonjour 👋</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
             {new Date().toLocaleDateString('fr-FR', {
               weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
             })}
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs text-emerald-400 font-medium">Système opérationnel</span>
+          <span className="text-xs text-emerald-600 font-medium">Système opérationnel</span>
         </div>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-4 gap-4">
-        {statCards.map(({ label, value, icon: Icon, iconClass, bgClass, borderClass }) => (
+        {statCards.map(({ label, value, icon: Icon, iconClass, bgClass, borderClass, valueClass }) => (
           <div
             key={label}
-            className={`bg-slate-900 rounded-xl p-5 border ${borderClass} hover:brightness-110 transition-all`}
+            className={`bg-white rounded-xl p-5 border ${borderClass} shadow-sm hover:shadow-md transition-shadow`}
           >
             <div className="flex items-start justify-between mb-4">
               <div className={`w-9 h-9 rounded-lg ${bgClass} flex items-center justify-center`}>
                 <Icon className={`w-4 h-4 ${iconClass}`} />
               </div>
-              <TrendingUp className="w-3.5 h-3.5 text-slate-700" />
+              <TrendingUp className="w-3.5 h-3.5 text-gray-300" />
             </div>
-            <p className="text-2xl font-bold text-slate-100 tabular-nums">
+            <p className={`text-2xl font-bold tabular-nums ${valueClass}`}>
               {loading ? '—' : value}
             </p>
-            <p className="text-xs text-slate-500 mt-1">{label}</p>
+            <p className="text-xs text-gray-500 mt-1">{label}</p>
           </div>
         ))}
       </div>
@@ -130,33 +134,34 @@ export default function Dashboard() {
       {/* Main grid */}
       <div className="grid grid-cols-5 gap-4">
         {/* Bar chart */}
-        <div className="col-span-3 bg-slate-900 rounded-xl p-5 border border-slate-800">
+        <div className="col-span-3 bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
           <div className="mb-5">
-            <h3 className="text-sm font-semibold text-slate-200">Niveaux de stock</h3>
-            <p className="text-xs text-slate-500">Par catégorie · données exemple</p>
+            <h3 className="text-sm font-semibold text-gray-800">Niveaux de stock</h3>
+            <p className="text-xs text-gray-400">Par catégorie · données exemple</p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={mockStockData} barSize={28}>
               <XAxis
                 dataKey="name"
-                tick={{ fill: '#64748b', fontSize: 11 }}
+                tick={{ fill: '#9ca3af', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: '#64748b', fontSize: 11 }}
+                tick={{ fill: '#9ca3af', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
                 contentStyle={{
-                  background: '#1e293b',
-                  border: '1px solid #334155',
+                  background: '#ffffff',
+                  border: '1px solid #e5e7eb',
                   borderRadius: '8px',
                   fontSize: 12,
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                 }}
-                labelStyle={{ color: '#cbd5e1' }}
-                itemStyle={{ color: '#a78bfa' }}
+                labelStyle={{ color: '#374151' }}
+                itemStyle={{ color: '#7c3aed' }}
                 cursor={{ fill: 'rgba(124, 58, 237, 0.05)' }}
               />
               <Bar dataKey="stock" radius={[4, 4, 0, 0]}>
@@ -164,7 +169,7 @@ export default function Dashboard() {
                   <Cell
                     key={i}
                     fill={entry.stock < 50 ? '#f59e0b' : '#7c3aed'}
-                    fillOpacity={0.75}
+                    fillOpacity={0.8}
                   />
                 ))}
               </Bar>
@@ -173,23 +178,23 @@ export default function Dashboard() {
         </div>
 
         {/* Recent movements */}
-        <div className="col-span-2 bg-slate-900 rounded-xl p-5 border border-slate-800">
+        <div className="col-span-2 bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-200">Derniers mouvements</h3>
-            <Clock className="w-3.5 h-3.5 text-slate-600" />
+            <h3 className="text-sm font-semibold text-gray-800">Derniers mouvements</h3>
+            <Clock className="w-3.5 h-3.5 text-gray-400" />
           </div>
 
           {loading ? (
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-10 bg-slate-800 rounded animate-pulse" />
+                <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />
               ))}
             </div>
           ) : recentMovements.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-center">
-              <ArrowUpDown className="w-8 h-8 text-slate-700 mb-2" />
-              <p className="text-xs text-slate-600">Aucun mouvement enregistré</p>
-              <p className="text-xs text-slate-700 mt-1">Les mouvements apparaîtront ici</p>
+              <ArrowUpDown className="w-8 h-8 text-gray-300 mb-2" />
+              <p className="text-xs text-gray-400">Aucun mouvement enregistré</p>
+              <p className="text-xs text-gray-300 mt-1">Les mouvements apparaîtront ici</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -198,18 +203,18 @@ export default function Dashboard() {
                 return (
                   <div
                     key={m.id}
-                    className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0"
+                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
                   >
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-slate-300 truncate">
+                      <p className="text-xs font-medium text-gray-700 truncate">
                         {m.component_id?.name || 'Composant'}
                       </p>
-                      <p className="text-[10px] text-slate-600">
+                      <p className="text-[10px] text-gray-400">
                         {new Date(m.date).toLocaleDateString('fr-FR')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-slate-500">×{m.quantity}</span>
+                      <span className="text-xs text-gray-400">×{m.quantity}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${config.color}`}>
                         {config.label}
                       </span>

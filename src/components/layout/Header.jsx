@@ -17,20 +17,20 @@ export default function Header() {
   const page = pageTitles[pathname] || { title: 'LabStock', subtitle: '' }
 
   return (
-    <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0">
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shrink-0">
       <div>
-        <h1 className="text-sm font-semibold text-slate-100">{page.title}</h1>
-        <p className="text-xs text-slate-500">{page.subtitle}</p>
+        <h1 className="text-sm font-semibold text-gray-900">{page.title}</h1>
+        <p className="text-xs text-gray-400">{page.subtitle}</p>
       </div>
       <div className="flex items-center gap-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
           <Input
             placeholder="Rechercher..."
-            className="pl-8 h-8 w-48 bg-slate-800 border-slate-700 text-sm text-slate-300 placeholder:text-slate-600 focus-visible:ring-violet-500"
+            className="pl-8 h-8 w-48 bg-gray-50 border-gray-200 text-sm text-gray-700 placeholder:text-gray-400 focus-visible:ring-violet-500"
           />
         </div>
-        <button className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-500 hover:text-slate-300 transition-colors">
+        <button className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-violet-500" />
         </button>
