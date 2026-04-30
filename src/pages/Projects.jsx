@@ -40,8 +40,8 @@ function StudentProjects({ profile }) {
     const [{ data: reqs }, { data: tchs }, { data: comps }] = await Promise.all([
       supabase.from('project_requests').select(`
         *,
-        teacher:profiles!teacher_id(name),
-        items:project_request_items(quantity, component:components(name, code))
+        teacher:teacher_id(name, firstname),
+        items:project_request_items(quantity, component:component_id(name, code))
       `).eq('student_id', profile.id).order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, name, firstname').eq('role', 'teacher'),
       supabase.from('components').select('id, name, code, quantity').order('name'),
@@ -210,8 +210,8 @@ function TeacherProjects({ profile }) {
     setLoading(true)
     const { data } = await supabase.from('project_requests').select(`
       *,
-      student:profiles!student_id(name, firstname),
-      items:project_request_items(quantity, component:components(name, code))
+      student:student_id(name, firstname),
+      items:project_request_items(quantity, component:component_id(name, code))
     `).eq('teacher_id', profile.id).eq('status', 'pending_teacher').order('created_at', { ascending: false })
     
     setRequests(data || [])
@@ -280,9 +280,9 @@ function LabProjects() {
     setLoading(true)
     const { data } = await supabase.from('project_requests').select(`
       *,
-      student:profiles!student_id(name, firstname),
-      teacher:profiles!teacher_id(name, firstname),
-      items:project_request_items(component_id, quantity, component:components(name, code, quantity))
+      student:student_id(name, firstname),
+      teacher:teacher_id(name, firstname),
+      items:project_request_items(component_id, quantity, component:component_id(name, code, quantity))
     `).in('status', ['pending_lab', 'approved']).order('created_at', { ascending: false })
     
     setRequests(data || [])
