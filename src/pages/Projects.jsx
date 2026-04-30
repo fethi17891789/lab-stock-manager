@@ -407,42 +407,158 @@ function LabProjects() {
     fetchRequests()
   }
 
-  function generateComponentsPDF(req) {
-    const doc = new jsPDF()
-    doc.setFontSize(16)
-    doc.text(`Liste de préparation - ${req.title}`, 14, 20)
-    doc.setFontSize(10)
-    doc.text(`Étudiant: ${req.student?.firstname} ${req.student?.name}`, 14, 28)
-
-    autoTable(doc, {
-      startY: 35,
-      head: [['Composant', 'Référence', 'Quantité à préparer']],
-      body: req.items.map(item => [item.component?.name || '?', item.component?.code || '?', item.quantity]),
+  async function getLogoBase64() {
+    const response = await fetch('/logo.png')
+    const blob = await response.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result)
+      reader.readAsDataURL(blob)
     })
-
-    doc.save(`preparation-${req.title}.pdf`)
   }
 
-  function generateProjectPDF(req) {
-    const doc = new jsPDF()
-    doc.setFontSize(18)
-    doc.text(`Fiche Récapitulative de Projet`, 14, 20)
+  function pdfHeader(doc, logoData) {
+    doc.addImage(logoData, 'PNG', 14, 8, 38, 22)
+    doc.setFontSize(11)
+    doc.setFont(undefined, 'bold')
+    doc.setTextColor(60, 60, 60)
+    doc.text('École Supérieure en Sciences Appliquées', 58, 15)
+    doc.setFont(undefined, 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(100, 100, 100)
+    doc.text('ESSA — Tlemcen', 58, 21)
+    doc.text(`Établi le : ${new Date().toLocaleDateString('fr-FR')}`, 58, 27)
+    doc.setDrawColor(124, 58, 237)
+    doc.setLineWidth(0.8)
+    doc.line(14, 34, 196, 34)
+    doc.setTextColor(0, 0, 0)
+  }
 
-    doc.setFontSize(12)
-    doc.text(`Titre du projet : ${req.title}`, 14, 35)
-    doc.text(`Type : ${req.type === 'pfe' ? 'Projet de Fin d\'Études (PFE)' : 'Mini-projet'}`, 14, 45)
-    doc.text(`Étudiant : ${req.student?.firstname} ${req.student?.name}`, 14, 55)
-    doc.text(`Enseignant superviseur : ${req.teacher?.firstname} ${req.teacher?.name}`, 14, 65)
-    doc.text(`Date de demande : ${new Date(req.created_at).toLocaleDateString('fr-FR')}`, 14, 75)
-    doc.text(`Statut : ${statusConfig[req.status]?.label}`, 14, 85)
+  async function generateComponentsPDF(req) {
+    const logoData = await getLogoBase64()
+    const doc = new jsPDF()
+
+    pdfHeader(doc, logoData)
+
+    doc.setFontSize(15)
+    doc.setFont(undefined, 'bold')
+    doc.setTextColor(124, 58, 237)
+    doc.text('LISTE DE PRÉPARATION DU MATÉRIEL', 105, 45, { align: 'center' })
+    doc.setTextColor(0, 0, 0)
+
+    doc.setFillColor(245, 243, 255)
+    doc.setDrawColor(200, 185, 255)
+    doc.roundedRect(14, 52, 182, 32, 3, 3, 'FD')
+    doc.setFontSize(9)
+    doc.setFont(undefined, 'bold')
+    doc.text('Projet :', 20, 61)
+    doc.text('Type :', 20, 69)
+    doc.text('Étudiant :', 20, 77)
+    doc.setFont(undefined, 'normal')
+    doc.text(req.title, 45, 61)
+    doc.text(req.type === 'pfe' ? "Projet de Fin d'Études (PFE)" : 'Mini-projet', 45, 69)
+    doc.text(`${req.student?.firstname || ''} ${req.student?.name || ''}`, 45, 77)
 
     autoTable(doc, {
-      startY: 95,
-      head: [['Composant Alloué', 'Référence', 'Quantité']],
-      body: req.items.map(item => [item.component?.name, item.component?.code, item.quantity]),
+      startY: 92,
+      head: [['N°', 'Désignation', 'Référence', 'Qté', 'Préparé ✓']],
+      body: req.items.map((item, idx) => [
+        idx + 1,
+        item.component?.name || '?',
+        item.component?.code || '?',
+        item.quantity,
+        ''
+      ]),
+      headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 245, 255] },
+      styles: { fontSize: 9, cellPadding: 4 },
+      columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 24, halign: 'center' } },
     })
 
-    doc.save(`fiche-projet-${req.title}.pdf`)
+    const y = doc.lastAutoTable.finalY + 16
+    doc.setFontSize(9)
+    doc.setFont(undefined, 'bold')
+    doc.text('Signature du laborantin :', 14, y)
+    doc.setFont(undefined, 'normal')
+    doc.setDrawColor(180)
+    doc.line(14, y + 18, 80, y + 18)
+
+    doc.save(`liste-preparation-${req.title}.pdf`)
+  }
+
+  async function generateProjectPDF(req) {
+    const logoData = await getLogoBase64()
+    const doc = new jsPDF()
+
+    pdfHeader(doc, logoData)
+
+    doc.setFontSize(16)
+    doc.setFont(undefined, 'bold')
+    doc.setTextColor(124, 58, 237)
+    doc.text('FICHE DE DÉCHARGE', 105, 45, { align: 'center' })
+    doc.setTextColor(0, 0, 0)
+
+    // Project info box
+    doc.setFillColor(245, 243, 255)
+    doc.setDrawColor(200, 185, 255)
+    doc.roundedRect(14, 52, 182, 32, 3, 3, 'FD')
+    doc.setFontSize(9)
+    doc.setFont(undefined, 'bold')
+    doc.text('Titre du projet :', 20, 61)
+    doc.text('Type :', 20, 69)
+    doc.text('Date de demande :', 20, 77)
+    doc.setFont(undefined, 'normal')
+    doc.text(req.title, 60, 61)
+    doc.text(req.type === 'pfe' ? "Projet de Fin d'Études (PFE)" : 'Mini-projet', 60, 69)
+    doc.text(new Date(req.created_at).toLocaleDateString('fr-FR'), 60, 77)
+
+    // Encadrant / Étudiant side by side
+    const boxY = 92
+    doc.setFillColor(250, 250, 250)
+    doc.setDrawColor(220, 220, 220)
+    doc.roundedRect(14, boxY, 87, 28, 2, 2, 'FD')
+    doc.roundedRect(109, boxY, 87, 28, 2, 2, 'FD')
+
+    doc.setFontSize(8)
+    doc.setFont(undefined, 'bold')
+    doc.setTextColor(124, 58, 237)
+    doc.text('ENCADRANT', 57, boxY + 7, { align: 'center' })
+    doc.text('ÉTUDIANT', 152, boxY + 7, { align: 'center' })
+    doc.setTextColor(0, 0, 0)
+    doc.setFont(undefined, 'normal')
+    doc.setFontSize(9)
+    doc.text(`${req.teacher?.firstname || ''} ${req.teacher?.name || ''}`, 57, boxY + 16, { align: 'center' })
+    doc.text(`${req.student?.firstname || ''} ${req.student?.name || ''}`, 152, boxY + 16, { align: 'center' })
+
+    // Components table
+    autoTable(doc, {
+      startY: boxY + 36,
+      head: [['Désignation', 'Référence', 'Quantité retirée']],
+      body: req.items.map(item => [
+        item.component?.name || '?',
+        item.component?.code || '?',
+        item.quantity
+      ]),
+      headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 245, 255] },
+      styles: { fontSize: 9, cellPadding: 4 },
+      columnStyles: { 2: { halign: 'center', cellWidth: 36 } },
+    })
+
+    // Signatures
+    const sigY = doc.lastAutoTable.finalY + 20
+    doc.setFontSize(9)
+    doc.setFont(undefined, 'bold')
+    doc.text("Signature de l'étudiant", 30, sigY, { align: 'center' })
+    doc.text("Signature de l'encadrant", 105, sigY, { align: 'center' })
+    doc.text('Signature du laborantin', 175, sigY, { align: 'center' })
+    doc.setDrawColor(180)
+    doc.setLineWidth(0.4)
+    doc.line(10, sigY + 20, 60, sigY + 20)
+    doc.line(78, sigY + 20, 132, sigY + 20)
+    doc.line(148, sigY + 20, 196, sigY + 20)
+
+    doc.save(`fiche-decharge-${req.title}.pdf`)
   }
 
   const pendingRequests = requests.filter(r => r.status === 'pending_lab')
