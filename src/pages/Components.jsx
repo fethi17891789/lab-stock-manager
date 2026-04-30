@@ -184,10 +184,14 @@ export default function Components() {
     img.src = svgData
   }
 
-  const filtered = components.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.code.toLowerCase().includes(search.toLowerCase())
-  )
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  const filtered = components.filter(c => {
+    const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.code.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = statusFilter === 'all' || (c.status || 'in_stock') === statusFilter
+    return matchSearch && matchStatus
+  })
 
   function getLocation(comp) {
     const slot = comp.slot_id
@@ -214,6 +218,27 @@ export default function Components() {
           <Plus className="w-4 h-4" />
           Ajouter un composant
         </Button>
+      </div>
+
+      {/* Filtres par état */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { key: 'all', label: 'Tous', color: statusFilter === 'all' ? 'bg-gray-800 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300' },
+          { key: 'in_stock',   label: 'En stock',    color: statusFilter === 'in_stock'   ? 'bg-emerald-600 text-white' : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100' },
+          { key: 'in_project', label: 'En projet',   color: statusFilter === 'in_project' ? 'bg-blue-600 text-white'    : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100' },
+          { key: 'damaged',    label: 'Endommagé',   color: statusFilter === 'damaged'    ? 'bg-amber-600 text-white'   : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100' },
+          { key: 'lost',       label: 'Perdu',       color: statusFilter === 'lost'       ? 'bg-red-600 text-white'     : 'bg-red-50 text-red-700 border border-red-200 hover:bg-red-100' },
+        ].map(f => (
+          <button key={f.key} onClick={() => setStatusFilter(f.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${f.color}`}>
+            {f.label}
+            {f.key !== 'all' && (
+              <span className="ml-1.5 opacity-70">
+                ({components.filter(c => (c.status || 'in_stock') === f.key).length})
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       {/* Table */}
