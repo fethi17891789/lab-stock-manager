@@ -30,6 +30,7 @@ function StudentProjects({ profile }) {
 
   // Form state
   const [title, setTitle] = useState('')
+  const [type, setType] = useState('mini_project')
   const [teacherId, setTeacherId] = useState('')
   const [reqItems, setReqItems] = useState([{ compId: '', quantity: 1 }])
 
@@ -80,6 +81,7 @@ function StudentProjects({ profile }) {
 
     const { data: request, error } = await supabase.from('project_requests').insert({
       title,
+      type,
       student_id: profile.id,
       teacher_id: teacherId,
       status: 'pending_teacher'
@@ -101,6 +103,7 @@ function StudentProjects({ profile }) {
     setSaving(false)
     setOpen(false)
     setTitle('')
+    setType('mini_project')
     setTeacherId('')
     setReqItems([{ compId: '', quantity: 1 }])
     fetchAll()
@@ -130,6 +133,9 @@ function StudentProjects({ profile }) {
               <div key={req.id} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-800 text-lg">{req.title}</h3>
+                  <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-1 mb-1 ${req.type === 'pfe' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {req.type === 'pfe' ? 'PFE' : 'Mini-projet'}
+                  </span>
                   <p className="text-sm text-gray-500">Superviseur : {req.teacher?.name || 'Inconnu'}</p>
                   <p className="text-xs text-gray-400 mt-1">Fait le {new Date(req.created_at).toLocaleDateString('fr-FR')}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -162,7 +168,27 @@ function StudentProjects({ profile }) {
               <Label>Titre du projet</Label>
               <Input placeholder="ex: Robot suiveur de ligne" value={title} onChange={e => setTitle(e.target.value)} />
             </div>
-            
+
+            <div className="space-y-1.5">
+              <Label>Type de projet</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setType('mini_project')}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${type === 'mini_project' ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-200 hover:border-violet-300'}`}
+                >
+                  Mini-projet
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType('pfe')}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors ${type === 'pfe' ? 'bg-violet-600 text-white border-violet-600' : 'bg-white text-gray-600 border-gray-200 hover:border-violet-300'}`}
+                >
+                  PFE
+                </button>
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label>Enseignant Superviseur</Label>
               <Select value={teacherId} onValueChange={setTeacherId}>
@@ -283,6 +309,9 @@ function TeacherProjects({ profile }) {
             <div key={req.id} className="bg-white p-5 rounded-xl border border-blue-100 shadow-sm flex flex-col md:flex-row gap-4 justify-between">
               <div>
                 <h3 className="font-semibold text-gray-800 text-lg">{req.title}</h3>
+                <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-1 mb-1 ${req.type === 'pfe' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                  {req.type === 'pfe' ? 'PFE' : 'Mini-projet'}
+                </span>
                 <p className="text-sm text-gray-500">Étudiant : {req.student?.firstname} {req.student?.name}</p>
                 <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-100">
                   <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">Matériel demandé :</p>
@@ -401,13 +430,14 @@ function LabProjects() {
 
     doc.setFontSize(12)
     doc.text(`Titre du projet : ${req.title}`, 14, 35)
-    doc.text(`Étudiant : ${req.student?.firstname} ${req.student?.name}`, 14, 45)
-    doc.text(`Enseignant superviseur : ${req.teacher?.firstname} ${req.teacher?.name}`, 14, 55)
-    doc.text(`Date de demande : ${new Date(req.created_at).toLocaleDateString('fr-FR')}`, 14, 65)
-    doc.text(`Statut : ${statusConfig[req.status]?.label}`, 14, 75)
+    doc.text(`Type : ${req.type === 'pfe' ? 'Projet de Fin d\'Études (PFE)' : 'Mini-projet'}`, 14, 45)
+    doc.text(`Étudiant : ${req.student?.firstname} ${req.student?.name}`, 14, 55)
+    doc.text(`Enseignant superviseur : ${req.teacher?.firstname} ${req.teacher?.name}`, 14, 65)
+    doc.text(`Date de demande : ${new Date(req.created_at).toLocaleDateString('fr-FR')}`, 14, 75)
+    doc.text(`Statut : ${statusConfig[req.status]?.label}`, 14, 85)
 
     autoTable(doc, {
-      startY: 85,
+      startY: 95,
       head: [['Composant Alloué', 'Référence', 'Quantité']],
       body: req.items.map(item => [item.component?.name, item.component?.code, item.quantity]),
     })
@@ -432,6 +462,9 @@ function LabProjects() {
               <div key={req.id} className="bg-white p-5 rounded-xl border border-amber-100 shadow-sm flex flex-col md:flex-row gap-4 justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-800 text-lg">{req.title}</h3>
+                  <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium mt-1 mb-1 ${req.type === 'pfe' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {req.type === 'pfe' ? 'PFE' : 'Mini-projet'}
+                  </span>
                   <p className="text-sm text-gray-500">Étudiant : {req.student?.firstname} {req.student?.name}</p>
                   <p className="text-sm text-gray-500">Enseignant : {req.teacher?.firstname} {req.teacher?.name}</p>
                   
