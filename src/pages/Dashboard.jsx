@@ -226,6 +226,14 @@ function DashboardTeacher({ profile }) {
   )
 }
 
+const reqStatusConfig = {
+  pending_teacher: { label: 'En attente enseignant', color: 'bg-amber-50 text-amber-600 border-amber-200' },
+  rejected_teacher: { label: 'Refusé',               color: 'bg-red-50 text-red-600 border-red-200' },
+  pending_lab:     { label: 'En attente laborantin', color: 'bg-blue-50 text-blue-600 border-blue-200' },
+  rejected_lab:    { label: 'Refusé',                color: 'bg-red-50 text-red-600 border-red-200' },
+  approved:        { label: 'Approuvé & Délivré',    color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+}
+
 // ─── Dashboard Étudiant ──────────────────────────────────────────────────────
 function DashboardStudent({ profile }) {
   const [projects, setProjects] = useState([])
@@ -234,10 +242,11 @@ function DashboardStudent({ profile }) {
   useEffect(() => {
     async function fetchData() {
       const { data } = await supabase
-        .from('project_students')
-        .select('project_id(id, title, type, created_at)')
+        .from('project_requests')
+        .select('id, title, type, status, created_at')
         .eq('student_id', profile?.id || '')
-      setProjects(data?.map(d => d.project_id) ?? [])
+        .order('created_at', { ascending: false })
+      setProjects(data ?? [])
       setLoading(false)
     }
     fetchData()
@@ -251,8 +260,8 @@ function DashboardStudent({ profile }) {
             <FolderKanban className="w-4 h-4 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-gray-800">Mes projets</h3>
-            <p className="text-xs text-gray-400">Projets auxquels vous participez</p>
+            <h3 className="text-sm font-semibold text-gray-800">Mes demandes de projets</h3>
+            <p className="text-xs text-gray-400">Suivi de vos demandes</p>
           </div>
         </div>
 
@@ -261,30 +270,29 @@ function DashboardStudent({ profile }) {
         ) : projects.length === 0 ? (
           <div className="text-center py-8">
             <FolderKanban className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-sm text-gray-400">Aucun projet assigné pour l'instant</p>
+            <p className="text-sm text-gray-400">Aucune demande pour l'instant</p>
+            <p className="text-xs text-gray-300 mt-1">Allez dans "Projets" pour faire une demande</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {projects.map(p => (
-              <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50">
-                <p className="text-sm font-medium text-gray-700">{p.title}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.type === 'final_project' ? 'bg-violet-50 text-violet-600 border border-violet-200' : 'bg-blue-50 text-blue-600 border border-blue-200'}`}>
-                  {p.type === 'final_project' ? 'Projet final' : 'Mini-projet'}
-                </span>
-              </div>
-            ))}
+            {projects.map(p => {
+              const st = reqStatusConfig[p.status] || reqStatusConfig.pending_teacher
+              return (
+                <div key={p.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:bg-gray-50 gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-700 truncate">{p.title}</p>
+                    <span className={`text-xs font-medium ${p.type === 'pfe' ? 'text-violet-600' : 'text-blue-500'}`}>
+                      {p.type === 'pfe' ? 'PFE' : 'Mini-projet'}
+                    </span>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium border shrink-0 ${st.color}`}>
+                    {st.label}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         )}
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <GraduationCap className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-blue-800">Interface étudiant</p>
-            <p className="text-xs text-blue-600 mt-1">La consultation des composants empruntés et le suivi de vos projets seront disponibles prochainement.</p>
-          </div>
-        </div>
       </div>
     </div>
   )

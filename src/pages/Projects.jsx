@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
-import { Plus, FolderKanban, Check, X, FileText, Package, GraduationCap, Clock, AlertTriangle } from 'lucide-react'
+import { Plus, FolderKanban, Check, X, FileText, Package, AlertTriangle, ArrowLeftRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -525,6 +525,7 @@ function TeacherProjects({ profile }) {
 function LabProjects() {
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
+  const [manageReq, setManageReq] = useState(null)
 
   useEffect(() => { fetchRequests() }, [])
 
@@ -585,6 +586,29 @@ function LabProjects() {
   async function rejectRequest(reqId) {
     await supabase.from('project_requests').update({ status: 'rejected_lab' }).eq('id', reqId)
     fetchRequests()
+  }
+
+  async function updateComponentStatus(componentId, newStatus, returnQty) {
+    const updates = { status: newStatus }
+    if (newStatus === 'in_stock' && returnQty) {
+      const comp = requests.flatMap(r => r.items).find(i => i.component_id === componentId)?.component
+      const currentQty = comp?.quantity || 0
+      updates.quantity = currentQty + returnQty
+    }
+    await supabase.from('components').update(updates).eq('id', componentId)
+    if (newStatus === 'in_stock' && returnQty) {
+      await supabase.from('stock_movements').insert({
+        component_id: componentId,
+        type: 'return',
+        quantity: returnQty,
+        date: new Date().toISOString()
+      })
+    }
+    fetchRequests()
+    setManageReq(prev => prev ? {
+      ...prev,
+      items: prev.items.map(i => i.component_id === componentId ? { ...i, component: { ...i.component, status: newStatus } } : i)
+    } : null)
   }
 
   const pendingRequests = requests.filter(r => r.status === 'pending_lab')
@@ -665,6 +689,9 @@ function LabProjects() {
                   <TableCell className="text-gray-500 text-sm">{new Date(req.created_at).toLocaleDateString('fr-FR')}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setManageReq(req)} title="Gérer le retour" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+                        <ArrowLeftRight className="w-4 h-4" />
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => generateComponentsPDF(req)} title="Liste de préparation" className="text-blue-600 border-blue-200 hover:bg-blue-50">
                         <Package className="w-4 h-4" />
                       </Button>
@@ -684,6 +711,61 @@ function LabProjects() {
           </Table>
         </div>
       </div>
+    </div>
+  )
+}
+
+      {/* Modal gestion retour */}
+      <Dialog open={!!manageReq} onOpenChange={() => setManageReq(null)}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gérer le retour — {manageReq?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-gray-500">Pour chaque composant, indiquez son état au retour.</p>
+            {manageReq?.items.map((item, idx) => {
+              const compStatus = item.component?.status || 'in_stock'
+              const statusColors = {
+                in_stock: 'bg-emerald-50 text-emerald-700',
+                in_project: 'bg-blue-50 text-blue-700',
+                damaged: 'bg-amber-50 text-amber-700',
+                lost: 'bg-red-50 text-red-700',
+              }
+              const statusLabels = { in_stock: 'En stock', in_project: 'En projet', damaged: 'Endommagé', lost: 'Perdu' }
+              return (
+                <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="font-medium text-gray-800 text-sm">{item.component?.name}</p>
+                      <p className="text-xs text-gray-400 font-mono">{item.component?.code} · {item.quantity} unité(s)</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[compStatus]}`}>
+                      {statusLabels[compStatus]}
+                    </span>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" onClick={() => updateComponentStatus(item.component_id, 'in_stock', item.quantity)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-7 px-2 gap-1">
+                      <Check className="w-3 h-3" /> Rendu
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateComponentStatus(item.component_id, 'damaged', 0)}
+                      className="text-amber-600 border-amber-200 hover:bg-amber-50 text-xs h-7 px-2">
+                      Endommagé
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => updateComponentStatus(item.component_id, 'lost', 0)}
+                      className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7 px-2">
+                      Perdu
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManageReq(null)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

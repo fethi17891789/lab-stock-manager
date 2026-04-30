@@ -15,7 +15,14 @@ import {
 } from '@/components/ui/table'
 import { QRCodeSVG } from 'qrcode.react'
 
-const emptyForm = { name: '', code: '', quantity: '', safety_stock: '', slot_id: '' }
+const statusConfig = {
+  in_stock:   { label: 'En stock',    color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
+  in_project: { label: 'En projet',   color: 'bg-blue-50 text-blue-600 border-blue-200' },
+  damaged:    { label: 'Endommagé',   color: 'bg-amber-50 text-amber-600 border-amber-200' },
+  lost:       { label: 'Perdu',       color: 'bg-red-50 text-red-600 border-red-200' },
+}
+
+const emptyForm = { name: '', code: '', quantity: '', safety_stock: '', slot_id: '', status: 'in_stock' }
 
 export default function Components() {
   const [components, setComponents] = useState([])
@@ -80,6 +87,7 @@ export default function Components() {
       quantity: String(comp.quantity),
       safety_stock: String(comp.safety_stock),
       slot_id: slot?.id || '',
+      status: comp.status || 'in_stock',
     })
     setOpen(true)
   }
@@ -107,6 +115,7 @@ export default function Components() {
       quantity: parseInt(form.quantity) || 0,
       safety_stock: parseInt(form.safety_stock) || 0,
       slot_id: form.slot_id || null,
+      status: form.status || 'in_stock',
     }
     if (editing) {
       await supabase.from('components').update(payload).eq('id', editing)
@@ -253,15 +262,16 @@ export default function Components() {
                     <TableCell className="text-center text-gray-400 text-sm">{comp.safety_stock}</TableCell>
                     <TableCell className="text-xs text-gray-500">{getLocation(comp)}</TableCell>
                     <TableCell>
-                      {isLow ? (
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 font-medium">
-                          <AlertTriangle className="w-3 h-3" /> Stock bas
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex items-center text-xs px-2 py-0.5 rounded-full border font-medium ${(statusConfig[comp.status] || statusConfig.in_stock).color}`}>
+                          {(statusConfig[comp.status] || statusConfig.in_stock).label}
                         </span>
-                      ) : (
-                        <span className="inline-flex items-center text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 font-medium">
-                          OK
-                        </span>
-                      )}
+                        {isLow && (
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 font-medium">
+                            <AlertTriangle className="w-3 h-3" /> Stock bas
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
@@ -309,6 +319,17 @@ export default function Components() {
               <div className="space-y-1.5">
                 <Label>Seuil d'alerte</Label>
                 <Input type="number" min="0" placeholder="0" value={form.safety_stock} onChange={e => setForm(f => ({ ...f, safety_stock: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>État du composant</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(statusConfig).map(([key, val]) => (
+                  <button key={key} type="button" onClick={() => setForm(f => ({ ...f, status: key }))}
+                    className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${form.status === key ? `${val.color} border-current` : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}>
+                    {val.label}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="border-t pt-3 space-y-3">
