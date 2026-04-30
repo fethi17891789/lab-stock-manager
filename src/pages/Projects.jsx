@@ -37,18 +37,40 @@ function StudentProjects({ profile }) {
 
   async function fetchAll() {
     setLoading(true)
+
     const [{ data: reqs }, { data: tchs }, { data: comps }] = await Promise.all([
-      supabase.from('project_requests').select(`
-        *,
-        teacher:teacher_id(name, firstname),
-        items:project_request_items(quantity, component:component_id(name, code))
-      `).eq('student_id', profile.id).order('created_at', { ascending: false }),
+      supabase.from('project_requests').select('*').eq('student_id', profile.id).order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, name, firstname').eq('role', 'teacher'),
       supabase.from('components').select('id, name, code, quantity').order('name'),
     ])
-    setRequests(reqs || [])
+
+    const reqList = reqs || []
     setTeachers(tchs || [])
     setComponents(comps || [])
+
+    if (reqList.length === 0) { setRequests([]); setLoading(false); return }
+
+    const reqIds = reqList.map(r => r.id)
+    const teacherIds = [...new Set(reqList.map(r => r.teacher_id))]
+
+    const [{ data: allItems }, { data: teacherProfiles }] = await Promise.all([
+      supabase.from('project_request_items').select('*').in('request_id', reqIds),
+      supabase.from('profiles').select('id, name, firstname').in('id', teacherIds),
+    ])
+
+    const compIds = [...new Set((allItems || []).map(i => i.component_id))]
+    const { data: compsData } = compIds.length > 0
+      ? await supabase.from('components').select('id, name, code').in('id', compIds)
+      : { data: [] }
+
+    const compMap = Object.fromEntries((compsData || []).map(c => [c.id, c]))
+    const teacherMap = Object.fromEntries((teacherProfiles || []).map(t => [t.id, t]))
+
+    setRequests(reqList.map(req => ({
+      ...req,
+      teacher: teacherMap[req.teacher_id] || null,
+      items: (allItems || []).filter(i => i.request_id === req.id).map(i => ({ ...i, component: compMap[i.component_id] || null }))
+    })))
     setLoading(false)
   }
 
@@ -208,13 +230,34 @@ function TeacherProjects({ profile }) {
 
   async function fetchRequests() {
     setLoading(true)
-    const { data } = await supabase.from('project_requests').select(`
-      *,
-      student:student_id(name, firstname),
-      items:project_request_items(quantity, component:component_id(name, code))
-    `).eq('teacher_id', profile.id).eq('status', 'pending_teacher').order('created_at', { ascending: false })
-    
-    setRequests(data || [])
+
+    const { data: reqs } = await supabase.from('project_requests').select('*')
+      .eq('teacher_id', profile.id).eq('status', 'pending_teacher').order('created_at', { ascending: false })
+
+    const reqList = reqs || []
+    if (reqList.length === 0) { setRequests([]); setLoading(false); return }
+
+    const reqIds = reqList.map(r => r.id)
+    const studentIds = [...new Set(reqList.map(r => r.student_id))]
+
+    const [{ data: allItems }, { data: studentProfiles }] = await Promise.all([
+      supabase.from('project_request_items').select('*').in('request_id', reqIds),
+      supabase.from('profiles').select('id, name, firstname').in('id', studentIds),
+    ])
+
+    const compIds = [...new Set((allItems || []).map(i => i.component_id))]
+    const { data: compsData } = compIds.length > 0
+      ? await supabase.from('components').select('id, name, code').in('id', compIds)
+      : { data: [] }
+
+    const compMap = Object.fromEntries((compsData || []).map(c => [c.id, c]))
+    const studentMap = Object.fromEntries((studentProfiles || []).map(s => [s.id, s]))
+
+    setRequests(reqList.map(req => ({
+      ...req,
+      student: studentMap[req.student_id] || null,
+      items: (allItems || []).filter(i => i.request_id === req.id).map(i => ({ ...i, component: compMap[i.component_id] || null }))
+    })))
     setLoading(false)
   }
 
@@ -278,14 +321,35 @@ function LabProjects() {
 
   async function fetchRequests() {
     setLoading(true)
-    const { data } = await supabase.from('project_requests').select(`
-      *,
-      student:student_id(name, firstname),
-      teacher:teacher_id(name, firstname),
-      items:project_request_items(component_id, quantity, component:component_id(name, code, quantity))
-    `).in('status', ['pending_lab', 'approved']).order('created_at', { ascending: false })
-    
-    setRequests(data || [])
+
+    const { data: reqs } = await supabase.from('project_requests').select('*')
+      .in('status', ['pending_lab', 'approved']).order('created_at', { ascending: false })
+
+    const reqList = reqs || []
+    if (reqList.length === 0) { setRequests([]); setLoading(false); return }
+
+    const reqIds = reqList.map(r => r.id)
+    const personIds = [...new Set([...reqList.map(r => r.student_id), ...reqList.map(r => r.teacher_id)])]
+
+    const [{ data: allItems }, { data: personProfiles }] = await Promise.all([
+      supabase.from('project_request_items').select('*').in('request_id', reqIds),
+      supabase.from('profiles').select('id, name, firstname').in('id', personIds),
+    ])
+
+    const compIds = [...new Set((allItems || []).map(i => i.component_id))]
+    const { data: compsData } = compIds.length > 0
+      ? await supabase.from('components').select('id, name, code, quantity').in('id', compIds)
+      : { data: [] }
+
+    const compMap = Object.fromEntries((compsData || []).map(c => [c.id, c]))
+    const profileMap = Object.fromEntries((personProfiles || []).map(p => [p.id, p]))
+
+    setRequests(reqList.map(req => ({
+      ...req,
+      student: profileMap[req.student_id] || null,
+      teacher: profileMap[req.teacher_id] || null,
+      items: (allItems || []).filter(i => i.request_id === req.id).map(i => ({ ...i, component: compMap[i.component_id] || null }))
+    })))
     setLoading(false)
   }
 
