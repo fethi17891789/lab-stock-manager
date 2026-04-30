@@ -19,6 +19,132 @@ const statusConfig = {
   approved: { label: 'Approuvé & Délivré', color: 'bg-emerald-50 text-emerald-600 border-emerald-200' },
 }
 
+// --- PDF HELPERS (module level) ---
+async function getLogoBase64() {
+  const response = await fetch('/logo.png')
+  const blob = await response.blob()
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.readAsDataURL(blob)
+  })
+}
+
+function pdfHeader(doc, logoData) {
+  doc.addImage(logoData, 'PNG', 14, 8, 38, 22)
+  doc.setFontSize(11)
+  doc.setFont(undefined, 'bold')
+  doc.setTextColor(60, 60, 60)
+  doc.text('École Supérieure en Sciences Appliquées', 58, 15)
+  doc.setFont(undefined, 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(100, 100, 100)
+  doc.text('ESSA — Tlemcen', 58, 21)
+  doc.text(`Établi le : ${new Date().toLocaleDateString('fr-FR')}`, 58, 27)
+  doc.setDrawColor(124, 58, 237)
+  doc.setLineWidth(0.8)
+  doc.line(14, 34, 196, 34)
+  doc.setTextColor(0, 0, 0)
+}
+
+async function generateComponentsPDF(req) {
+  const logoData = await getLogoBase64()
+  const doc = new jsPDF()
+  pdfHeader(doc, logoData)
+  doc.setFontSize(15)
+  doc.setFont(undefined, 'bold')
+  doc.setTextColor(124, 58, 237)
+  doc.text('LISTE DE PRÉPARATION DU MATÉRIEL', 105, 45, { align: 'center' })
+  doc.setTextColor(0, 0, 0)
+  doc.setFillColor(245, 243, 255)
+  doc.setDrawColor(200, 185, 255)
+  doc.roundedRect(14, 52, 182, 32, 3, 3, 'FD')
+  doc.setFontSize(9)
+  doc.setFont(undefined, 'bold')
+  doc.text('Projet :', 20, 61)
+  doc.text('Type :', 20, 69)
+  doc.text('Étudiant :', 20, 77)
+  doc.setFont(undefined, 'normal')
+  doc.text(req.title, 45, 61)
+  doc.text(req.type === 'pfe' ? "Projet de Fin d'Études (PFE)" : 'Mini-projet', 45, 69)
+  doc.text(`${req.student?.firstname || ''} ${req.student?.name || ''}`, 45, 77)
+  autoTable(doc, {
+    startY: 92,
+    head: [['N°', 'Désignation', 'Référence', 'Qté', 'Préparé ✓']],
+    body: req.items.map((item, idx) => [idx + 1, item.component?.name || '?', item.component?.code || '?', item.quantity, '']),
+    headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    alternateRowStyles: { fillColor: [248, 245, 255] },
+    styles: { fontSize: 9, cellPadding: 4 },
+    columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 24, halign: 'center' } },
+  })
+  const y = doc.lastAutoTable.finalY + 16
+  doc.setFontSize(9)
+  doc.setFont(undefined, 'bold')
+  doc.text('Signature du laborantin :', 14, y)
+  doc.setDrawColor(180)
+  doc.line(14, y + 18, 80, y + 18)
+  doc.save(`liste-preparation-${req.title}.pdf`)
+}
+
+async function generateProjectPDF(req) {
+  const logoData = await getLogoBase64()
+  const doc = new jsPDF()
+  pdfHeader(doc, logoData)
+  doc.setFontSize(16)
+  doc.setFont(undefined, 'bold')
+  doc.setTextColor(124, 58, 237)
+  doc.text('FICHE DE DÉCHARGE', 105, 45, { align: 'center' })
+  doc.setTextColor(0, 0, 0)
+  doc.setFillColor(245, 243, 255)
+  doc.setDrawColor(200, 185, 255)
+  doc.roundedRect(14, 52, 182, 32, 3, 3, 'FD')
+  doc.setFontSize(9)
+  doc.setFont(undefined, 'bold')
+  doc.text('Titre du projet :', 20, 61)
+  doc.text('Type :', 20, 69)
+  doc.text('Date de demande :', 20, 77)
+  doc.setFont(undefined, 'normal')
+  doc.text(req.title, 60, 61)
+  doc.text(req.type === 'pfe' ? "Projet de Fin d'Études (PFE)" : 'Mini-projet', 60, 69)
+  doc.text(new Date(req.created_at).toLocaleDateString('fr-FR'), 60, 77)
+  const boxY = 92
+  doc.setFillColor(250, 250, 250)
+  doc.setDrawColor(220, 220, 220)
+  doc.roundedRect(14, boxY, 87, 28, 2, 2, 'FD')
+  doc.roundedRect(109, boxY, 87, 28, 2, 2, 'FD')
+  doc.setFontSize(8)
+  doc.setFont(undefined, 'bold')
+  doc.setTextColor(124, 58, 237)
+  doc.text('ENCADRANT', 57, boxY + 7, { align: 'center' })
+  doc.text('ÉTUDIANT', 152, boxY + 7, { align: 'center' })
+  doc.setTextColor(0, 0, 0)
+  doc.setFont(undefined, 'normal')
+  doc.setFontSize(9)
+  doc.text(`${req.teacher?.firstname || ''} ${req.teacher?.name || ''}`, 57, boxY + 16, { align: 'center' })
+  doc.text(`${req.student?.firstname || ''} ${req.student?.name || ''}`, 152, boxY + 16, { align: 'center' })
+  autoTable(doc, {
+    startY: boxY + 36,
+    head: [['Désignation', 'Référence', 'Quantité retirée']],
+    body: req.items.map(item => [item.component?.name || '?', item.component?.code || '?', item.quantity]),
+    headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    alternateRowStyles: { fillColor: [248, 245, 255] },
+    styles: { fontSize: 9, cellPadding: 4 },
+    columnStyles: { 2: { halign: 'center', cellWidth: 36 } },
+  })
+  const sigY = doc.lastAutoTable.finalY + 20
+  doc.setFontSize(9)
+  doc.setFont(undefined, 'bold')
+  doc.text("Signature de l'étudiant", 30, sigY, { align: 'center' })
+  doc.text("Signature de l'encadrant", 105, sigY, { align: 'center' })
+  doc.text('Signature du laborantin', 175, sigY, { align: 'center' })
+  doc.setDrawColor(180)
+  doc.setLineWidth(0.4)
+  doc.line(10, sigY + 20, 60, sigY + 20)
+  doc.line(78, sigY + 20, 132, sigY + 20)
+  doc.line(148, sigY + 20, 196, sigY + 20)
+  doc.save(`fiche-decharge-${req.title}.pdf`)
+}
+
 // --- STUDENT VIEW ---
 function StudentProjects({ profile }) {
   const [requests, setRequests] = useState([])
@@ -146,10 +272,20 @@ function StudentProjects({ profile }) {
                     ))}
                   </div>
                 </div>
-                <div className="flex items-start shrink-0">
+                <div className="flex flex-col items-end gap-2 shrink-0">
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${status.color}`}>
                     {status.label}
                   </span>
+                  {req.status === 'approved' && (
+                    <div className="flex gap-1.5">
+                      <Button variant="outline" size="sm" onClick={() => generateComponentsPDF(req)} title="Liste de préparation" className="text-blue-600 border-blue-200 hover:bg-blue-50 h-8 px-2">
+                        <Package className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => generateProjectPDF(req)} title="Fiche de décharge" className="text-violet-600 border-violet-200 hover:bg-violet-50 h-8 px-2">
+                        <FileText className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             )
@@ -258,7 +394,7 @@ function TeacherProjects({ profile }) {
     setLoading(true)
 
     const { data: reqs } = await supabase.from('project_requests').select('*')
-      .eq('teacher_id', profile.id).eq('status', 'pending_teacher').order('created_at', { ascending: false })
+      .eq('teacher_id', profile.id).order('created_at', { ascending: false })
 
     const reqList = reqs || []
     if (reqList.length === 0) { setRequests([]); setLoading(false); return }
@@ -292,20 +428,24 @@ function TeacherProjects({ profile }) {
     fetchRequests()
   }
 
+  const pendingTeacher = requests.filter(r => r.status === 'pending_teacher')
+  const approvedTeacher = requests.filter(r => r.status === 'approved')
+
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-bold text-gray-800">Demandes en attente de validation</h2>
+    <div className="space-y-8">
+      <div>
+      <h2 className="text-xl font-bold text-gray-800 mb-4">Demandes en attente de validation</h2>
 
       {loading ? (
         <p className="text-sm text-gray-500">Chargement...</p>
-      ) : requests.length === 0 ? (
+      ) : pendingTeacher.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
           <Check className="w-8 h-8 mx-auto mb-2 text-gray-300" />
           <p>Vous n'avez aucune demande en attente.</p>
         </div>
       ) : (
         <div className="grid gap-4">
-          {requests.map(req => (
+          {pendingTeacher.map(req => (
             <div key={req.id} className="bg-white p-5 rounded-xl border border-blue-100 shadow-sm flex flex-col md:flex-row gap-4 justify-between">
               <div>
                 <h3 className="font-semibold text-gray-800 text-lg">{req.title}</h3>
@@ -337,6 +477,46 @@ function TeacherProjects({ profile }) {
           ))}
         </div>
       )}
+      </div>
+
+      <div>
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Projets approuvés</h2>
+        {approvedTeacher.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-500 text-sm">Aucun projet approuvé pour l'instant.</div>
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead>Projet</TableHead>
+                  <TableHead>Étudiant</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Documents</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {approvedTeacher.map(req => (
+                  <TableRow key={req.id}>
+                    <TableCell className="font-medium text-gray-800">{req.title}</TableCell>
+                    <TableCell className="text-gray-600">{req.student?.firstname} {req.student?.name}</TableCell>
+                    <TableCell className="text-gray-500 text-sm">{new Date(req.created_at).toLocaleDateString('fr-FR')}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => generateComponentsPDF(req)} title="Liste de préparation" className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                          <Package className="w-4 h-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => generateProjectPDF(req)} title="Fiche de décharge" className="text-violet-600 border-violet-200 hover:bg-violet-50">
+                          <FileText className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -405,160 +585,6 @@ function LabProjects() {
   async function rejectRequest(reqId) {
     await supabase.from('project_requests').update({ status: 'rejected_lab' }).eq('id', reqId)
     fetchRequests()
-  }
-
-  async function getLogoBase64() {
-    const response = await fetch('/logo.png')
-    const blob = await response.blob()
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
-      reader.readAsDataURL(blob)
-    })
-  }
-
-  function pdfHeader(doc, logoData) {
-    doc.addImage(logoData, 'PNG', 14, 8, 38, 22)
-    doc.setFontSize(11)
-    doc.setFont(undefined, 'bold')
-    doc.setTextColor(60, 60, 60)
-    doc.text('École Supérieure en Sciences Appliquées', 58, 15)
-    doc.setFont(undefined, 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(100, 100, 100)
-    doc.text('ESSA — Tlemcen', 58, 21)
-    doc.text(`Établi le : ${new Date().toLocaleDateString('fr-FR')}`, 58, 27)
-    doc.setDrawColor(124, 58, 237)
-    doc.setLineWidth(0.8)
-    doc.line(14, 34, 196, 34)
-    doc.setTextColor(0, 0, 0)
-  }
-
-  async function generateComponentsPDF(req) {
-    const logoData = await getLogoBase64()
-    const doc = new jsPDF()
-
-    pdfHeader(doc, logoData)
-
-    doc.setFontSize(15)
-    doc.setFont(undefined, 'bold')
-    doc.setTextColor(124, 58, 237)
-    doc.text('LISTE DE PRÉPARATION DU MATÉRIEL', 105, 45, { align: 'center' })
-    doc.setTextColor(0, 0, 0)
-
-    doc.setFillColor(245, 243, 255)
-    doc.setDrawColor(200, 185, 255)
-    doc.roundedRect(14, 52, 182, 32, 3, 3, 'FD')
-    doc.setFontSize(9)
-    doc.setFont(undefined, 'bold')
-    doc.text('Projet :', 20, 61)
-    doc.text('Type :', 20, 69)
-    doc.text('Étudiant :', 20, 77)
-    doc.setFont(undefined, 'normal')
-    doc.text(req.title, 45, 61)
-    doc.text(req.type === 'pfe' ? "Projet de Fin d'Études (PFE)" : 'Mini-projet', 45, 69)
-    doc.text(`${req.student?.firstname || ''} ${req.student?.name || ''}`, 45, 77)
-
-    autoTable(doc, {
-      startY: 92,
-      head: [['N°', 'Désignation', 'Référence', 'Qté', 'Préparé ✓']],
-      body: req.items.map((item, idx) => [
-        idx + 1,
-        item.component?.name || '?',
-        item.component?.code || '?',
-        item.quantity,
-        ''
-      ]),
-      headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-      alternateRowStyles: { fillColor: [248, 245, 255] },
-      styles: { fontSize: 9, cellPadding: 4 },
-      columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 24, halign: 'center' } },
-    })
-
-    const y = doc.lastAutoTable.finalY + 16
-    doc.setFontSize(9)
-    doc.setFont(undefined, 'bold')
-    doc.text('Signature du laborantin :', 14, y)
-    doc.setFont(undefined, 'normal')
-    doc.setDrawColor(180)
-    doc.line(14, y + 18, 80, y + 18)
-
-    doc.save(`liste-preparation-${req.title}.pdf`)
-  }
-
-  async function generateProjectPDF(req) {
-    const logoData = await getLogoBase64()
-    const doc = new jsPDF()
-
-    pdfHeader(doc, logoData)
-
-    doc.setFontSize(16)
-    doc.setFont(undefined, 'bold')
-    doc.setTextColor(124, 58, 237)
-    doc.text('FICHE DE DÉCHARGE', 105, 45, { align: 'center' })
-    doc.setTextColor(0, 0, 0)
-
-    // Project info box
-    doc.setFillColor(245, 243, 255)
-    doc.setDrawColor(200, 185, 255)
-    doc.roundedRect(14, 52, 182, 32, 3, 3, 'FD')
-    doc.setFontSize(9)
-    doc.setFont(undefined, 'bold')
-    doc.text('Titre du projet :', 20, 61)
-    doc.text('Type :', 20, 69)
-    doc.text('Date de demande :', 20, 77)
-    doc.setFont(undefined, 'normal')
-    doc.text(req.title, 60, 61)
-    doc.text(req.type === 'pfe' ? "Projet de Fin d'Études (PFE)" : 'Mini-projet', 60, 69)
-    doc.text(new Date(req.created_at).toLocaleDateString('fr-FR'), 60, 77)
-
-    // Encadrant / Étudiant side by side
-    const boxY = 92
-    doc.setFillColor(250, 250, 250)
-    doc.setDrawColor(220, 220, 220)
-    doc.roundedRect(14, boxY, 87, 28, 2, 2, 'FD')
-    doc.roundedRect(109, boxY, 87, 28, 2, 2, 'FD')
-
-    doc.setFontSize(8)
-    doc.setFont(undefined, 'bold')
-    doc.setTextColor(124, 58, 237)
-    doc.text('ENCADRANT', 57, boxY + 7, { align: 'center' })
-    doc.text('ÉTUDIANT', 152, boxY + 7, { align: 'center' })
-    doc.setTextColor(0, 0, 0)
-    doc.setFont(undefined, 'normal')
-    doc.setFontSize(9)
-    doc.text(`${req.teacher?.firstname || ''} ${req.teacher?.name || ''}`, 57, boxY + 16, { align: 'center' })
-    doc.text(`${req.student?.firstname || ''} ${req.student?.name || ''}`, 152, boxY + 16, { align: 'center' })
-
-    // Components table
-    autoTable(doc, {
-      startY: boxY + 36,
-      head: [['Désignation', 'Référence', 'Quantité retirée']],
-      body: req.items.map(item => [
-        item.component?.name || '?',
-        item.component?.code || '?',
-        item.quantity
-      ]),
-      headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: 'bold', fontSize: 9 },
-      alternateRowStyles: { fillColor: [248, 245, 255] },
-      styles: { fontSize: 9, cellPadding: 4 },
-      columnStyles: { 2: { halign: 'center', cellWidth: 36 } },
-    })
-
-    // Signatures
-    const sigY = doc.lastAutoTable.finalY + 20
-    doc.setFontSize(9)
-    doc.setFont(undefined, 'bold')
-    doc.text("Signature de l'étudiant", 30, sigY, { align: 'center' })
-    doc.text("Signature de l'encadrant", 105, sigY, { align: 'center' })
-    doc.text('Signature du laborantin', 175, sigY, { align: 'center' })
-    doc.setDrawColor(180)
-    doc.setLineWidth(0.4)
-    doc.line(10, sigY + 20, 60, sigY + 20)
-    doc.line(78, sigY + 20, 132, sigY + 20)
-    doc.line(148, sigY + 20, 196, sigY + 20)
-
-    doc.save(`fiche-decharge-${req.title}.pdf`)
   }
 
   const pendingRequests = requests.filter(r => r.status === 'pending_lab')
